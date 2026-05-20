@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Salami Diben Koto? 💸</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0f6e56 0%, #1d9e75 50%, #5dcaa5 100%);
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .card {
+      background: #fff;
+      border-radius: 24px;
+      padding: 2.5rem 2rem;
+      text-align: center;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    h1 { font-size: 28px; color: #0f6e56; margin-bottom: 6px; }
+    .subtitle { font-size: 15px; color: #888; margin-bottom: 1.5rem; }
+    .wheel-wrap {
+      position: relative;
+      width: 280px;
+      height: 280px;
+      margin: 0 auto 1.5rem;
+    }
+    .pointer {
+      position: absolute;
+      top: -14px; left: 50%;
+      transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 12px solid transparent;
+      border-right: 12px solid transparent;
+      border-top: 24px solid #D85A30;
+      z-index: 10;
+    }
+    canvas { border-radius: 50%; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+    .spin-btn {
+      background: #1d9e75; color: white; border: none;
+      padding: 14px 48px; font-size: 18px; font-weight: 600;
+      border-radius: 50px; cursor: pointer; letter-spacing: 1px;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .spin-btn:hover { background: #0f6e56; }
+    .spin-btn:active { transform: scale(0.97); }
+    .spin-btn:disabled { background: #ccc; cursor: not-allowed; }
+    .result-card {
+      display: none; margin-top: 1.5rem;
+      background: #f0faf6; border: 1.5px solid #5dcaa5;
+      border-radius: 16px; padding: 1.5rem;
+      animation: popIn 0.4s ease;
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .result-top { font-size: 22px; margin-bottom: 8px; }
+    .result-title { font-size: 15px; color: #555; margin-bottom: 6px; }
+    .result-value { font-size: 28px; font-weight: 700; color: #0f6e56; margin-bottom: 6px; }
+    .result-msg   { font-size: 13px; color: #888; margin-bottom: 14px; }
+    .again-btn {
+      background: transparent;
+      border: 1.5px solid #1d9e75; color: #1d9e75;
+      padding: 8px 28px; border-radius: 50px;
+      cursor: pointer; font-size: 14px; transition: background 0.2s;
+    }
+    .again-btn:hover { background: #e1f5ee; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>Salami Diben Koto? 💸</h1>
+  <p class="subtitle">Spin the wheel to claim your Eid salami!</p>
+  <div class="wheel-wrap">
+    <div class="pointer"></div>
+    <canvas id="wheel" width="280" height="280"></canvas>
+  </div>
+  <button class="spin-btn" id="spinBtn" onclick="spin()">SPIN NOW!</button>
+  <div class="result-card" id="resultCard">
+    <div class="result-top">🤲</div>
+    <div class="result-title">Alhamdulillah! You got</div>
+    <div class="result-value">Unlimited Dua!</div>
+    <div class="result-msg">May Allah accept your duas this Eid. 🌙</div>
+    <button class="again-btn" onclick="reset()">Spin Again</button>
+  </div>
+</div>
+
+<script>
+  const segments = [
+    { label: "Dua",    color: "#5DCAA5", textColor: "#085041" },
+    { label: "5 tk",   color: "#7F77DD", textColor: "#fff" },
+    { label: "10 tk",  color: "#378ADD", textColor: "#fff" },
+    { label: "Dua",    color: "#5DCAA5", textColor: "#085041" },
+    { label: "2 tk",   color: "#EF9F27", textColor: "#fff" },
+    { label: "50 tk",  color: "#E24B4A", textColor: "#fff" },
+    { label: "100 tk", color: "#D4537E", textColor: "#fff" },
+    { label: "Dua",    color: "#5DCAA5", textColor: "#085041" },
+  ];
+
+  // Dua slices are at index 0, 3, 6
+  // pointer is at top = angle 270deg = -PI/2
+  // We always stop at index 0 (first Dua slice)
+  // Center of slice 0 = angle 0 + arc/2 from start
+  // We need that center to align with top pointer (-PI/2)
+
+  const canvas = document.getElementById('wheel');
+  const ctx    = canvas.getContext('2d');
+  const total  = segments.length;
+  const arc    = (2 * Math.PI) / total;
+  let currentAngle = 0;
+  let spinning = false;
+
+  // Target: slice 0 center stops at top (-PI/2)
+  // slice 0 center in wheel coords = arc/2
+  // we need: currentAngle + arc/2 = -PI/2  (mod 2PI)
+  // so: currentAngle = -PI/2 - arc/2
+  const duaStopAngle = -Math.PI / 2 - arc / 2;
+
+  function drawWheel(angle) {
+    ctx.clearRect(0, 0, 280, 280);
+    const cx = 140, cy = 140, r = 136;
+
+    for (let i = 0; i < total; i++) {
+      const start = angle + i * arc;
+      const end   = start + arc;
+
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, start, end);
+      ctx.closePath();
+      ctx.fillStyle = segments[i].color;
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // upright label
+      const midAngle = start + arc / 2;
+      const labelR   = r * 0.65;
+      const lx = cx + labelR * Math.cos(midAngle);
+      const ly = cy + labelR * Math.sin(midAngle);
+
+      ctx.save();
+      ctx.translate(lx, ly);
+      ctx.rotate(midAngle + Math.PI / 2);
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle    = segments[i].textColor;
+      ctx.font         = 'bold 13px Segoe UI, sans-serif';
+      ctx.fillText(segments[i].label, 0, 0);
+      ctx.restore();
+    }
+
+    // center circle
+    ctx.beginPath();
+    ctx.arc(cx, cy, 20, 0, 2 * Math.PI);
+    ctx.fillStyle   = '#fff';
+    ctx.fill();
+    ctx.strokeStyle = '#ddd';
+    ctx.lineWidth   = 2;
+    ctx.stroke();
+  }
+
+  drawWheel(currentAngle);
+
+  function spin() {
+    if (spinning) return;
+    spinning = true;
+    document.getElementById('spinBtn').disabled = true;
+    document.getElementById('resultCard').style.display = 'none';
+
+    // Always land on Dua — add random full spins for fun effect
+    const fullSpins  = (6 + Math.floor(Math.random() * 4)) * 2 * Math.PI;
+    // Normalize duaStopAngle to be ahead of currentAngle
+    let target = duaStopAngle + fullSpins;
+    // Make sure target > currentAngle
+    while (target <= currentAngle) target += 2 * Math.PI;
+
+    const duration  = 4000;
+    const startTime = performance.now();
+    const startAngle = currentAngle;
+
+    function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
+
+    function animate(now) {
+      const elapsed  = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      currentAngle   = startAngle + (target - startAngle) * easeOut(progress);
+      drawWheel(currentAngle);
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        currentAngle = duaStopAngle;
+        drawWheel(currentAngle);
+        spinning = false;
+        setTimeout(showResult, 300);
+      }
+    }
+    requestAnimationFrame(animate);
+  }
+
+  function showResult() {
+    document.getElementById('resultCard').style.display = 'block';
+  }
+
+  function reset() {
+    document.getElementById('resultCard').style.display = 'none';
+    document.getElementById('spinBtn').disabled = false;
+  }
+</script>
+</body>
+</html>
