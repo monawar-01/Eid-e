@@ -19,11 +19,11 @@
       border-radius: 24px;
       padding: 2.5rem 2rem;
       text-align: center;
-      max-width: 400px;
+      max-width: 420px;
       width: 90%;
       box-shadow: 0 20px 60px rgba(0,0,0,0.2);
     }
-    h1 { font-size: 28px; color: #0f6e56; margin-bottom: 6px; }
+    h1 { font-size: 26px; color: #0f6e56; margin-bottom: 6px; }
     .subtitle { font-size: 15px; color: #888; margin-bottom: 1.5rem; }
     .wheel-wrap {
       position: relative;
@@ -61,23 +61,43 @@
       from { opacity: 0; transform: scale(0.9); }
       to   { opacity: 1; transform: scale(1); }
     }
-    .result-top { font-size: 22px; margin-bottom: 8px; }
-    .result-title { font-size: 15px; color: #555; margin-bottom: 6px; }
-    .result-value { font-size: 28px; font-weight: 700; color: #0f6e56; margin-bottom: 6px; }
-    .result-msg   { font-size: 13px; color: #888; margin-bottom: 14px; }
+    .result-top { font-size: 32px; margin-bottom: 10px; }
+    .result-msg {
+      font-size: 15px; color: #333;
+      line-height: 1.7; margin-bottom: 16px;
+    }
+    .accept-btn {
+      background: #1d9e75; color: #fff;
+      border: none; padding: 10px 32px;
+      border-radius: 50px; font-size: 15px;
+      font-weight: 600; cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .accept-btn:hover { background: #0f6e56; }
+    .accept-btn:active { transform: scale(0.97); }
+    .accepted-msg {
+      display: none;
+      margin-top: 12px;
+      font-size: 14px;
+      color: #0f6e56;
+      font-weight: 600;
+    }
     .again-btn {
+      display: none;
+      margin-top: 10px;
       background: transparent;
       border: 1.5px solid #1d9e75; color: #1d9e75;
       padding: 8px 28px; border-radius: 50px;
-      cursor: pointer; font-size: 14px; transition: background 0.2s;
+      cursor: pointer; font-size: 14px;
+      transition: background 0.2s;
     }
     .again-btn:hover { background: #e1f5ee; }
   </style>
 </head>
 <body>
 <div class="card">
-  <h1>Salami Diben Koto? 💸</h1>
-  <p class="subtitle">Spin the wheel to claim your Eid salami!</p>
+  <h1>সালামি দিবেন কতো? 💸</h1>
+  <p class="subtitle">স্পিন করুন এবং দেখুন কী পাবেন!</p>
   <div class="wheel-wrap">
     <div class="pointer"></div>
     <canvas id="wheel" width="280" height="280"></canvas>
@@ -85,30 +105,36 @@
   <button class="spin-btn" id="spinBtn" onclick="spin()">SPIN NOW!</button>
   <div class="result-card" id="resultCard">
     <div class="result-top">🤲</div>
-    <div class="result-title">Alhamdulillah! You got</div>
-    <div class="result-value">Unlimited Dua!</div>
-    <div class="result-msg">May Allah accept your duas this Eid. 🌙</div>
-    <button class="again-btn" onclick="reset()">Spin Again</button>
+    <div class="result-msg" id="resultMsg"></div>
+    <button class="accept-btn" id="acceptBtn" onclick="acceptDua()">Accept Dua</button>
+    <div class="accepted-msg" id="acceptedMsg">✅ দোয়া কবুল হোক! আমিন 🤲</div>
+    <button class="again-btn" id="againBtn" onclick="reset()">আবার স্পিন করুন</button>
   </div>
 </div>
 
 <script>
   const segments = [
-    { label: "Dua",    color: "#5DCAA5", textColor: "#085041" },
-    { label: "5 tk",   color: "#7F77DD", textColor: "#fff" },
-    { label: "10 tk",  color: "#378ADD", textColor: "#fff" },
-    { label: "Dua",    color: "#5DCAA5", textColor: "#085041" },
-    { label: "2 tk",   color: "#EF9F27", textColor: "#fff" },
-    { label: "50 tk",  color: "#E24B4A", textColor: "#fff" },
-    { label: "100 tk", color: "#D4537E", textColor: "#fff" },
-    { label: "Dua",    color: "#5DCAA5", textColor: "#085041" },
+    { label: "দোয়া", color: "#5DCAA5", textColor: "#085041", duaIndex: 0 },
+    { label: "5 tk",    color: "#7F77DD", textColor: "#fff",    duaIndex: -1 },
+    { label: "দোয়া", color: "#1D9E75", textColor: "#fff",    duaIndex: 1 },
+    { label: "10 tk",   color: "#378ADD", textColor: "#fff",    duaIndex: -1 },
+    { label: "দোয়া", color: "#0f6e56", textColor: "#fff",    duaIndex: 2 },
+    { label: "50 tk",   color: "#E24B4A", textColor: "#fff",    duaIndex: -1 },
+    { label: "2 tk",    color: "#EF9F27", textColor: "#fff",    duaIndex: -1 },
+    { label: "100 tk",  color: "#D4537E", textColor: "#fff",    duaIndex: -1 },
   ];
 
-  // Dua slices are at index 0, 3, 6
-  // pointer is at top = angle 270deg = -PI/2
-  // We always stop at index 0 (first Dua slice)
-  // Center of slice 0 = angle 0 + arc/2 from start
-  // We need that center to align with top pointer (-PI/2)
+  // ৩টা দোয়া ঘরের index (segments array তে)
+  const duaSlots = [0, 2, 4];
+
+  // কোন দোয়া পরবর্তী দেখাবে
+  let nextDuaOrder = 0;
+
+  const duaMessages = [
+    "আসসালামু আলাইকুম। সারা বছর খোঁজ-খবর থাকে না, এখন সালামী নিতে আসছেন। 😄\n\nখালি দোয়া হবে আপনাদের জন্য — আনলিমিটেড দোয়া। 🤲",
+    "আবার আসলেন? মাশাআল্লাহ! সালামী এখানে নেই ভাই, তবে দোয়া আনলিমিটেড আছে! 😄🤲",
+    "তৃতীয়বার চেষ্টা? সাহস আছে বটে! কিন্তু ফলাফল একই — আনলিমিটেড দোয়া! 😂🤲"
+  ];
 
   const canvas = document.getElementById('wheel');
   const ctx    = canvas.getContext('2d');
@@ -117,11 +143,12 @@
   let currentAngle = 0;
   let spinning = false;
 
-  // Target: slice 0 center stops at top (-PI/2)
-  // slice 0 center in wheel coords = arc/2
-  // we need: currentAngle + arc/2 = -PI/2  (mod 2PI)
-  // so: currentAngle = -PI/2 - arc/2
-  const duaStopAngle = -Math.PI / 2 - arc / 2;
+  function getTargetAngle(slotIndex) {
+    // slotIndex = segments array তে কোন ঘরে থামবে
+    // pointer উপরে = -PI/2
+    // ঐ ঘরের মাঝ বরাবর pointer যাবে
+    return -Math.PI / 2 - arc * slotIndex - arc / 2;
+  }
 
   function drawWheel(angle) {
     ctx.clearRect(0, 0, 280, 280);
@@ -141,7 +168,6 @@
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // upright label
       const midAngle = start + arc / 2;
       const labelR   = r * 0.65;
       const lx = cx + labelR * Math.cos(midAngle);
@@ -158,7 +184,6 @@
       ctx.restore();
     }
 
-    // center circle
     ctx.beginPath();
     ctx.arc(cx, cy, 20, 0, 2 * Math.PI);
     ctx.fillStyle   = '#fff';
@@ -175,16 +200,20 @@
     spinning = true;
     document.getElementById('spinBtn').disabled = true;
     document.getElementById('resultCard').style.display = 'none';
+    document.getElementById('acceptedMsg').style.display = 'none';
+    document.getElementById('acceptBtn').style.display = 'inline-block';
+    document.getElementById('againBtn').style.display = 'none';
 
-    // Always land on Dua — add random full spins for fun effect
+    // পালাক্রমে ৩টা দোয়া ঘরে থামবে
+    const targetSlot = duaSlots[nextDuaOrder % 3];
+    const stopAngle  = getTargetAngle(targetSlot);
+
     const fullSpins  = (6 + Math.floor(Math.random() * 4)) * 2 * Math.PI;
-    // Normalize duaStopAngle to be ahead of currentAngle
-    let target = duaStopAngle + fullSpins;
-    // Make sure target > currentAngle
+    let target = stopAngle + fullSpins;
     while (target <= currentAngle) target += 2 * Math.PI;
 
-    const duration  = 4000;
-    const startTime = performance.now();
+    const duration   = 4000;
+    const startTime  = performance.now();
     const startAngle = currentAngle;
 
     function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
@@ -197,7 +226,7 @@
       if (progress < 1) {
         requestAnimationFrame(animate);
       } else {
-        currentAngle = duaStopAngle;
+        currentAngle = stopAngle;
         drawWheel(currentAngle);
         spinning = false;
         setTimeout(showResult, 300);
@@ -207,7 +236,16 @@
   }
 
   function showResult() {
+    const msgIndex = nextDuaOrder % 3;
+    document.getElementById('resultMsg').innerText = duaMessages[msgIndex];
     document.getElementById('resultCard').style.display = 'block';
+    nextDuaOrder++;
+  }
+
+  function acceptDua() {
+    document.getElementById('acceptBtn').style.display = 'none';
+    document.getElementById('acceptedMsg').style.display = 'block';
+    document.getElementById('againBtn').style.display = 'inline-block';
   }
 
   function reset() {
