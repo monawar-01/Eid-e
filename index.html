@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Salami Paben Koto?</title>
+  <title>Salami Diben Koto? 💸</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -65,6 +65,7 @@
     .result-msg {
       font-size: 15px; color: #333;
       line-height: 1.7; margin-bottom: 16px;
+      white-space: pre-line;
     }
     .accept-btn {
       background: #1d9e75; color: #fff;
@@ -115,23 +116,20 @@
 <script>
   const segments = [
     { label: "দোয়া", color: "#5DCAA5", textColor: "#085041", duaIndex: 0 },
-    { label: "5 tk",    color: "#7F77DD", textColor: "#fff",    duaIndex: -1 },
+    { label: "5 tk",  color: "#7F77DD", textColor: "#fff",    duaIndex: -1 },
     { label: "দোয়া", color: "#1D9E75", textColor: "#fff",    duaIndex: 1 },
-    { label: "10 tk",   color: "#378ADD", textColor: "#fff",    duaIndex: -1 },
+    { label: "10 tk", color: "#378ADD", textColor: "#fff",    duaIndex: -1 },
     { label: "দোয়া", color: "#0f6e56", textColor: "#fff",    duaIndex: 2 },
-    { label: "50 tk",   color: "#E24B4A", textColor: "#fff",    duaIndex: -1 },
-    { label: "2 tk",    color: "#EF9F27", textColor: "#fff",    duaIndex: -1 },
-    { label: "100 tk",  color: "#D4537E", textColor: "#fff",    duaIndex: -1 },
+    { label: "50 tk", color: "#E24B4A", textColor: "#fff",    duaIndex: -1 },
+    { label: "2 tk",  color: "#EF9F27", textColor: "#fff",    duaIndex: -1 },
+    { label: "100 tk",color: "#D4537E", textColor: "#fff",    duaIndex: -1 },
   ];
 
-  // ৩টা দোয়া ঘরের index (segments array তে)
   const duaSlots = [0, 2, 4];
-
-  // কোন দোয়া পরবর্তী দেখাবে
   let nextDuaOrder = 0;
 
   const duaMessages = [
-    "আসসালামু আলাইকুম। সারা বছর খোঁজ-খবর থাকে না, এখন সালামী নিতে আসছেন। 😄\n\nখালি দোয়া হবে আপনাদের জন্য দোয়া — আনলিমিটেড দোয়া। 🤲",
+    "আসসালামু আলাইকুম। সারা বছর কোনো খোঁজ-খবর থাকে না, আর এখন আসছেন সালামী নিতে! 😄\n\nখালি দোয়া হবে আপনাদের জন্য দোয়া — আনলিমিটেড দোয়া। 🤲",
     "আবার আসলেন? মাশাআল্লাহ! সালামী এখানে নেই ভাই, তবে দোয়া আনলিমিটেড আছে! 😄🤲",
     "তৃতীয়বার চেষ্টা? সাহস আছে বটে! কিন্তু ফলাফল একই — আনলিমিটেড দোয়া! 😂🤲"
   ];
@@ -143,10 +141,53 @@
   let currentAngle = 0;
   let spinning = false;
 
+  // AudioContext সাউন্ড
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  function playSpinSound(duration) {
+    const oscillator = audioCtx.createOscillator();
+    const gainNode   = audioCtx.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(300, audioCtx.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + duration / 1000);
+    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
+    oscillator.start(audioCtx.currentTime);
+    oscillator.stop(audioCtx.currentTime + duration / 1000);
+  }
+
+  function playTickSound() {
+    const osc  = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime + 0.05);
+  }
+
+  function playResultSound() {
+    const notes = [523, 659, 784, 1047];
+    notes.forEach((freq, i) => {
+      const osc  = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.15);
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime + i * 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.15 + 0.3);
+      osc.start(audioCtx.currentTime + i * 0.15);
+      osc.stop(audioCtx.currentTime + i * 0.15 + 0.3);
+    });
+  }
+
   function getTargetAngle(slotIndex) {
-    // slotIndex = segments array তে কোন ঘরে থামবে
-    // pointer উপরে = -PI/2
-    // ঐ ঘরের মাঝ বরাবর pointer যাবে
     return -Math.PI / 2 - arc * slotIndex - arc / 2;
   }
 
@@ -204,10 +245,8 @@
     document.getElementById('acceptBtn').style.display = 'inline-block';
     document.getElementById('againBtn').style.display = 'none';
 
-    // পালাক্রমে ৩টা দোয়া ঘরে থামবে
     const targetSlot = duaSlots[nextDuaOrder % 3];
     const stopAngle  = getTargetAngle(targetSlot);
-
     const fullSpins  = (6 + Math.floor(Math.random() * 4)) * 2 * Math.PI;
     let target = stopAngle + fullSpins;
     while (target <= currentAngle) target += 2 * Math.PI;
@@ -216,6 +255,11 @@
     const startTime  = performance.now();
     const startAngle = currentAngle;
 
+    // স্পিন সাউন্ড শুরু
+    playSpinSound(duration);
+
+    let lastTickAngle = currentAngle;
+
     function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
 
     function animate(now) {
@@ -223,13 +267,23 @@
       const progress = Math.min(elapsed / duration, 1);
       currentAngle   = startAngle + (target - startAngle) * easeOut(progress);
       drawWheel(currentAngle);
+
+      // টিক সাউন্ড — প্রতিটা ঘর পার হলে
+      if (Math.floor(currentAngle / arc) !== Math.floor(lastTickAngle / arc)) {
+        playTickSound();
+        lastTickAngle = currentAngle;
+      }
+
       if (progress < 1) {
         requestAnimationFrame(animate);
       } else {
         currentAngle = stopAngle;
         drawWheel(currentAngle);
         spinning = false;
-        setTimeout(showResult, 300);
+        setTimeout(() => {
+          playResultSound();
+          showResult();
+        }, 300);
       }
     }
     requestAnimationFrame(animate);
