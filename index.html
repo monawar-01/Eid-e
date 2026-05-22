@@ -97,7 +97,7 @@
 </head>
 <body>
 <div class="card">
-  <h1>সালামি পাবেন কতো? </h1>
+  <h1>সালামি পাবেন কতো? 💸</h1>
   <p class="subtitle">স্পিন করুন এবং দেখুন কী পাবেন!</p>
   <div class="wheel-wrap">
     <div class="pointer"></div>
@@ -129,7 +129,7 @@
   let nextDuaOrder = 0;
 
   const duaMessages = [
-    "আসসালামু আলাইকুম। সারা বছর কোনো খোঁজ-খবর থাকে না, আর এখন আসছেন সালামী নিতে! 😄\n\nখালি দোয়া হবে আপনাদের জন্য দোয়া — আনলিমিটেড দোয়া। 🤲",
+    "আসসালামু আলাইকুম। সারা বছর খোঁজ-খবর থাকে না, এখন সালামী নিতে আসছেন। 😄\n\nখালি দোয়া হবে আপনাদের জন্য — আনলিমিটেড দোয়া। 🤲",
     "আবার আসলেন? মাশাআল্লাহ! সালামী এখানে নেই ভাই, তবে দোয়া আনলিমিটেড আছে! 😄🤲",
     "তৃতীয়বার চেষ্টা? সাহস আছে বটে! কিন্তু ফলাফল একই — আনলিমিটেড দোয়া! 😂🤲"
   ];
@@ -141,49 +141,55 @@
   let currentAngle = 0;
   let spinning = false;
 
-  // AudioContext সাউন্ড
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-  function playSpinSound(duration) {
-    const oscillator = audioCtx.createOscillator();
-    const gainNode   = audioCtx.createGain();
-    oscillator.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(300, audioCtx.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + duration / 1000);
-    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
-    oscillator.start(audioCtx.currentTime);
-    oscillator.stop(audioCtx.currentTime + duration / 1000);
-  }
-
-  function playTickSound() {
-    const osc  = audioCtx.createOscillator();
+  // ক্যাসিনো স্টাইল টিকটিক — দ্রুত ক্লিক সাউন্ড
+  function playTick() {
+    const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.04, audioCtx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (audioCtx.sampleRate * 0.008));
+    }
+    const src  = audioCtx.createBufferSource();
     const gain = audioCtx.createGain();
-    osc.connect(gain);
+    src.buffer = buf;
+    gain.gain.setValueAtTime(0.6, audioCtx.currentTime);
+    src.connect(gain);
     gain.connect(audioCtx.destination);
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
-    osc.start(audioCtx.currentTime);
-    osc.stop(audioCtx.currentTime + 0.05);
+    src.start();
   }
 
-  function playResultSound() {
-    const notes = [523, 659, 784, 1047];
+  // বিজয়ী সাউন্ড — দ্রুত তাড়া তাড়া fanfare
+  function playWinSound() {
+    const notes    = [523, 659, 784, 659, 784, 1047, 1047];
+    const durations = [0.08, 0.08, 0.08, 0.08, 0.08, 0.15, 0.3];
+    let time = audioCtx.currentTime;
+
     notes.forEach((freq, i) => {
       const osc  = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.connect(gain);
       gain.connect(audioCtx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.15);
-      gain.gain.setValueAtTime(0.3, audioCtx.currentTime + i * 0.15);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.15 + 0.3);
-      osc.start(audioCtx.currentTime + i * 0.15);
-      osc.stop(audioCtx.currentTime + i * 0.15 + 0.3);
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(freq, time);
+      gain.gain.setValueAtTime(0.25, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + durations[i]);
+      osc.start(time);
+      osc.stop(time + durations[i]);
+
+      // হারমোনি
+      const osc2  = audioCtx.createOscillator();
+      const gain2 = audioCtx.createGain();
+      osc2.connect(gain2);
+      gain2.connect(audioCtx.destination);
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(freq * 1.5, time);
+      gain2.gain.setValueAtTime(0.15, time);
+      gain2.gain.exponentialRampToValueAtTime(0.001, time + durations[i]);
+      osc2.start(time);
+      osc2.stop(time + durations[i]);
+
+      time += durations[i];
     });
   }
 
@@ -239,6 +245,7 @@
   function spin() {
     if (spinning) return;
     spinning = true;
+    audioCtx.resume();
     document.getElementById('spinBtn').disabled = true;
     document.getElementById('resultCard').style.display = 'none';
     document.getElementById('acceptedMsg').style.display = 'none';
@@ -255,23 +262,29 @@
     const startTime  = performance.now();
     const startAngle = currentAngle;
 
-    // স্পিন সাউন্ড শুরু
-    playSpinSound(duration);
-
-    let lastTickAngle = currentAngle;
+    let lastSegIndex = -1;
+    let lastTickTime = 0;
+    let minTickInterval = 80; // শুরুতে ধীরে
 
     function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
 
     function animate(now) {
-      const elapsed  = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      currentAngle   = startAngle + (target - startAngle) * easeOut(progress);
+      const elapsed   = now - startTime;
+      const progress  = Math.min(elapsed / duration, 1);
+      currentAngle    = startAngle + (target - startAngle) * easeOut(progress);
       drawWheel(currentAngle);
 
-      // টিক সাউন্ড — প্রতিটা ঘর পার হলে
-      if (Math.floor(currentAngle / arc) !== Math.floor(lastTickAngle / arc)) {
-        playTickSound();
-        lastTickAngle = currentAngle;
+      // গতি অনুযায়ী টিকটিক — দ্রুত ঘুরলে দ্রুত টিক
+      const speed = 1 - progress;
+      minTickInterval = 40 + speed * 200;
+
+      const normalized = ((currentAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+      const segIndex   = Math.floor(normalized / arc) % total;
+
+      if (segIndex !== lastSegIndex && (now - lastTickTime) > minTickInterval) {
+        playTick();
+        lastSegIndex = segIndex;
+        lastTickTime = now;
       }
 
       if (progress < 1) {
@@ -281,9 +294,9 @@
         drawWheel(currentAngle);
         spinning = false;
         setTimeout(() => {
-          playResultSound();
+          playWinSound();
           showResult();
-        }, 300);
+        }, 200);
       }
     }
     requestAnimationFrame(animate);
