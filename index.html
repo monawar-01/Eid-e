@@ -176,28 +176,52 @@
     src.start(t);
   }
 
-// নোটিফিকেশন সাউন্ড — ডিং ডিং
+// মেসেঞ্জার নোটিফিকেশন সাউন্ড — ডুং
   function playPopSound() {
     const ac = getACtx();
-    const notes = [
-      { freq: 1318, delay: 0,    dur: 0.6 },
-      { freq: 1567, delay: 0.15, dur: 0.6 },
-      { freq: 2093, delay: 0.30, dur: 0.9 },
-    ];
-    notes.forEach(({ freq, delay, dur }) => {
-      const t    = ac.currentTime + delay;
-      const osc  = ac.createOscillator();
-      const gain = ac.createGain();
-      osc.connect(gain);
-      gain.connect(ac.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, t);
-      gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.4, t + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
-      osc.start(t);
-      osc.stop(t + dur + 0.05);
-    });
+    const t  = ac.currentTime;
+
+    // মেইন ডুং সাউন্ড
+    const osc1  = ac.createOscillator();
+    const gain1 = ac.createGain();
+    osc1.connect(gain1);
+    gain1.connect(ac.destination);
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(1046, t);
+    osc1.frequency.exponentialRampToValueAtTime(800, t + 0.1);
+    gain1.gain.setValueAtTime(0, t);
+    gain1.gain.linearRampToValueAtTime(0.5, t + 0.01);
+    gain1.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+    osc1.start(t);
+    osc1.stop(t + 0.85);
+
+    // হালকা উপরের layer — উজ্জ্বল ভাব
+    const osc2  = ac.createOscillator();
+    const gain2 = ac.createGain();
+    osc2.connect(gain2);
+    gain2.connect(ac.destination);
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(2093, t);
+    osc2.frequency.exponentialRampToValueAtTime(1600, t + 0.08);
+    gain2.gain.setValueAtTime(0, t);
+    gain2.gain.linearRampToValueAtTime(0.15, t + 0.01);
+    gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+    osc2.start(t);
+    osc2.stop(t + 0.45);
+
+    // দ্বিতীয় ছোট ডুং — একটু পরে
+    const osc3  = ac.createOscillator();
+    const gain3 = ac.createGain();
+    osc3.connect(gain3);
+    gain3.connect(ac.destination);
+    osc3.type = 'sine';
+    osc3.frequency.setValueAtTime(1318, t + 0.18);
+    osc3.frequency.exponentialRampToValueAtTime(900, t + 0.35);
+    gain3.gain.setValueAtTime(0, t + 0.18);
+    gain3.gain.linearRampToValueAtTime(0.3, t + 0.19);
+    gain3.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
+    osc3.start(t + 0.18);
+    osc3.stop(t + 0.95);
   }
 
   function getTargetAngle(slotIndex) {
