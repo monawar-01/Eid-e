@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Salami Paben Koto? 💸</title>
+  <title>Salami paben Koto? 💸</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -77,15 +77,11 @@
     .accept-btn:hover { background: #0f6e56; }
     .accept-btn:active { transform: scale(0.97); }
     .accepted-msg {
-      display: none;
-      margin-top: 12px;
-      font-size: 14px;
-      color: #0f6e56;
-      font-weight: 600;
+      display: none; margin-top: 12px;
+      font-size: 14px; color: #0f6e56; font-weight: 600;
     }
     .again-btn {
-      display: none;
-      margin-top: 10px;
+      display: none; margin-top: 10px;
       background: transparent;
       border: 1.5px solid #1d9e75; color: #1d9e75;
       padding: 8px 28px; border-radius: 50px;
@@ -97,7 +93,7 @@
 </head>
 <body>
 <div class="card">
-  <h1>সালামি পাবেন কতো? </h1>
+  <h1>সালামি পাবেন কতো? 💸</h1>
   <p class="subtitle">স্পিন করুন এবং দেখুন কী পাবেন!</p>
   <div class="wheel-wrap">
     <div class="pointer"></div>
@@ -115,21 +111,21 @@
 
 <script>
   const segments = [
-    { label: "দোয়া", color: "#5DCAA5", textColor: "#085041", duaIndex: 0 },
-    { label: "5 tk",  color: "#7F77DD", textColor: "#fff",    duaIndex: -1 },
-    { label: "দোয়া", color: "#1D9E75", textColor: "#fff",    duaIndex: 1 },
-    { label: "10 tk", color: "#378ADD", textColor: "#fff",    duaIndex: -1 },
-    { label: "দোয়া", color: "#0f6e56", textColor: "#fff",    duaIndex: 2 },
-    { label: "50 tk", color: "#E24B4A", textColor: "#fff",    duaIndex: -1 },
-    { label: "2 tk",  color: "#EF9F27", textColor: "#fff",    duaIndex: -1 },
-    { label: "100 tk",color: "#D4537E", textColor: "#fff",    duaIndex: -1 },
+    { label: "দোয়া", color: "#5DCAA5", textColor: "#085041" },
+    { label: "5 tk",  color: "#7F77DD", textColor: "#fff" },
+    { label: "দোয়া", color: "#1D9E75", textColor: "#fff" },
+    { label: "10 tk", color: "#378ADD", textColor: "#fff" },
+    { label: "দোয়া", color: "#0f6e56", textColor: "#fff" },
+    { label: "50 tk", color: "#E24B4A", textColor: "#fff" },
+    { label: "2 tk",  color: "#EF9F27", textColor: "#fff" },
+    { label: "100 tk",color: "#D4537E", textColor: "#fff" },
   ];
 
   const duaSlots = [0, 2, 4];
   let nextDuaOrder = 0;
 
   const duaMessages = [
-    "আসসালামু আলাইকুম। সারা বছর খোঁজ-খবর থাকে না, আর এখন আসছেন সালামী নিতে! 😄\n\nখালি দোয়া হবে আপনাদের জন্য দোয়া — আনলিমিটেড দোয়া। 🤲",
+    "আসসালামু আলাইকুম। সারা বছর খোঁজ-খবর থাকে না, আর এখন আসছেন সালামী নিতে! 😄\n\nখালি দোয়া হবে আপনাদের জন্য দোয়া — আনলিমিটেড দোয়া। 🤲",
     "আবার আসলেন? মাশাআল্লাহ! সালামী এখানে নেই ভাই, তবে দোয়া আনলিমিটেড আছে! 😄🤲",
     "তৃতীয়বার চেষ্টা? সাহস আছে বটে! কিন্তু ফলাফল একই — আনলিমিটেড দোয়া! 😂🤲"
   ];
@@ -140,56 +136,84 @@
   const arc    = (2 * Math.PI) / total;
   let currentAngle = 0;
   let spinning = false;
+  let spinSoundNode = null;
+  let spinGainNode  = null;
 
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-  // ক্যাসিনো স্টাইল টিকটিক — দ্রুত ক্লিক সাউন্ড
-  function playTick() {
-    const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.04, audioCtx.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let i = 0; i < data.length; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (audioCtx.sampleRate * 0.008));
-    }
-    const src  = audioCtx.createBufferSource();
-    const gain = audioCtx.createGain();
-    src.buffer = buf;
-    gain.gain.setValueAtTime(0.6, audioCtx.currentTime);
-    src.connect(gain);
-    gain.connect(audioCtx.destination);
-    src.start();
+  let actx;
+  function getACtx() {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
   }
 
-  // বিজয়ী সাউন্ড — দ্রুত তাড়া তাড়া fanfare
-  function playWinSound() {
-    const notes    = [523, 659, 784, 659, 784, 1047, 1047];
-    const durations = [0.08, 0.08, 0.08, 0.08, 0.08, 0.15, 0.3];
-    let time = audioCtx.currentTime;
+  // চাকা ঘোরার সাউন্ড — whirring মোটর
+  function startWheelSound() {
+    const ac = getACtx();
 
-    notes.forEach((freq, i) => {
-      const osc  = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
+    // noise buffer — বাতাস কাটার শব্দ
+    const bufLen = ac.sampleRate * 5;
+    const buf    = ac.createBuffer(1, bufLen, ac.sampleRate);
+    const data   = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+
+    const noise = ac.createBufferSource();
+    noise.buffer = buf;
+    noise.loop   = true;
+
+    // bandpass filter — ঘুরঘুর ফিল
+    const filter      = ac.createBiquadFilter();
+    filter.type       = 'bandpass';
+    filter.frequency.setValueAtTime(800, ac.currentTime);
+    filter.frequency.linearRampToValueAtTime(200, ac.currentTime + 4);
+    filter.Q.value    = 3;
+
+    spinGainNode = ac.createGain();
+    spinGainNode.gain.setValueAtTime(0, ac.currentTime);
+    spinGainNode.gain.linearRampToValueAtTime(0.4, ac.currentTime + 0.3);
+
+    noise.connect(filter);
+    filter.connect(spinGainNode);
+    spinGainNode.connect(ac.destination);
+    noise.start();
+    spinSoundNode = noise;
+  }
+
+  function stopWheelSound() {
+    if (spinGainNode && spinSoundNode) {
+      const ac = getACtx();
+      spinGainNode.gain.setValueAtTime(spinGainNode.gain.value, ac.currentTime);
+      spinGainNode.gain.linearRampToValueAtTime(0, ac.currentTime + 0.4);
+      setTimeout(() => {
+        try { spinSoundNode.stop(); } catch(e) {}
+        spinSoundNode = null;
+        spinGainNode  = null;
+      }, 450);
+    }
+  }
+
+  // পপিং / পুকিং সাউন্ড — রেজাল্টে
+  function playPopSound() {
+    const ac = getACtx();
+    const pops = [0, 0.12, 0.22, 0.30, 0.37, 0.43];
+
+    pops.forEach((delay, i) => {
+      const t    = ac.currentTime + delay;
+      const osc  = ac.createOscillator();
+      const gain = ac.createGain();
       osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(freq, time);
-      gain.gain.setValueAtTime(0.25, time);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + durations[i]);
-      osc.start(time);
-      osc.stop(time + durations[i]);
+      gain.connect(ac.destination);
 
-      // হারমোনি
-      const osc2  = audioCtx.createOscillator();
-      const gain2 = audioCtx.createGain();
-      osc2.connect(gain2);
-      gain2.connect(audioCtx.destination);
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(freq * 1.5, time);
-      gain2.gain.setValueAtTime(0.15, time);
-      gain2.gain.exponentialRampToValueAtTime(0.001, time + durations[i]);
-      osc2.start(time);
-      osc2.stop(time + durations[i]);
+      osc.type = 'sine';
+      const baseFreq = 180 + i * 40;
+      osc.frequency.setValueAtTime(baseFreq * 2.5, t);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq, t + 0.15);
 
-      time += durations[i];
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.5, t + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+
+      osc.start(t);
+      osc.stop(t + 0.2);
     });
   }
 
@@ -200,11 +224,9 @@
   function drawWheel(angle) {
     ctx.clearRect(0, 0, 280, 280);
     const cx = 140, cy = 140, r = 136;
-
     for (let i = 0; i < total; i++) {
       const start = angle + i * arc;
       const end   = start + arc;
-
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.arc(cx, cy, r, start, end);
@@ -219,7 +241,6 @@
       const labelR   = r * 0.65;
       const lx = cx + labelR * Math.cos(midAngle);
       const ly = cy + labelR * Math.sin(midAngle);
-
       ctx.save();
       ctx.translate(lx, ly);
       ctx.rotate(midAngle + Math.PI / 2);
@@ -230,7 +251,6 @@
       ctx.fillText(segments[i].label, 0, 0);
       ctx.restore();
     }
-
     ctx.beginPath();
     ctx.arc(cx, cy, 20, 0, 2 * Math.PI);
     ctx.fillStyle   = '#fff';
@@ -245,12 +265,14 @@
   function spin() {
     if (spinning) return;
     spinning = true;
-    audioCtx.resume();
+    getACtx();
     document.getElementById('spinBtn').disabled = true;
     document.getElementById('resultCard').style.display = 'none';
     document.getElementById('acceptedMsg').style.display = 'none';
     document.getElementById('acceptBtn').style.display = 'inline-block';
     document.getElementById('againBtn').style.display = 'none';
+
+    startWheelSound();
 
     const targetSlot = duaSlots[nextDuaOrder % 3];
     const stopAngle  = getTargetAngle(targetSlot);
@@ -262,30 +284,13 @@
     const startTime  = performance.now();
     const startAngle = currentAngle;
 
-    let lastSegIndex = -1;
-    let lastTickTime = 0;
-    let minTickInterval = 80; // শুরুতে ধীরে
-
     function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
 
     function animate(now) {
-      const elapsed   = now - startTime;
-      const progress  = Math.min(elapsed / duration, 1);
-      currentAngle    = startAngle + (target - startAngle) * easeOut(progress);
+      const elapsed  = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      currentAngle   = startAngle + (target - startAngle) * easeOut(progress);
       drawWheel(currentAngle);
-
-      // গতি অনুযায়ী টিকটিক — দ্রুত ঘুরলে দ্রুত টিক
-      const speed = 1 - progress;
-      minTickInterval = 40 + speed * 200;
-
-      const normalized = ((currentAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-      const segIndex   = Math.floor(normalized / arc) % total;
-
-      if (segIndex !== lastSegIndex && (now - lastTickTime) > minTickInterval) {
-        playTick();
-        lastSegIndex = segIndex;
-        lastTickTime = now;
-      }
 
       if (progress < 1) {
         requestAnimationFrame(animate);
@@ -293,10 +298,11 @@
         currentAngle = stopAngle;
         drawWheel(currentAngle);
         spinning = false;
+        stopWheelSound();
         setTimeout(() => {
-          playWinSound();
+          playPopSound();
           showResult();
-        }, 200);
+        }, 300);
       }
     }
     requestAnimationFrame(animate);
